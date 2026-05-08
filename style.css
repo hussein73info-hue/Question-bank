@@ -1,0 +1,15 @@
+/* أضف هذا للجزء السفلي من ملف style.css الخاص بك */
+#quiz-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: var(--bg);
+    z-index: 1000;
+    overflow-y: auto;
+}
+.quiz-header { padding: 20px; background: var(--primary); color: white; }
+.quiz-body { padding: 20px; max-width: 800px; margin: auto; }
+.quiz-q-card { background: white; padding: 20px; border-radius: 15px; box-shadow: var(--shadow); }
+.quiz-opts { margin-top: 20px; display: grid; gap: 10px; }
+.quiz-opt { padding: 15px; border: 2px solid var(--border); border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.quiz-opt:hover { background: var(--f1l); border-color: var(--primary); }
