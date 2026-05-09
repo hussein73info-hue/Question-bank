@@ -1,173 +1,79 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a3a5c">
-<title>بنك أسئلة الثقافة المالية</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a3a5c">
+  <title>بنك أسئلة الثقافة المالية | حسين علقم</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body onload="init()">
+<body>
 <div class="app">
 
   <!-- HEADER -->
   <header>
     <div class="hdr-icon">📚</div>
-    <div class="hdr-text">
-      <h1>بنك أسئلة الثقافة المالية</h1>
-      <p>إعداد المشرف التربوي: <strong>حسين علقم</strong></p>
-    </div>
+    <h1>بنك أسئلة الثقافة المالية</h1>
+    <p>إعداد المشرف التربوي: <strong>حسين علقم</strong></p>
   </header>
 
-  <!-- NAV BAR (shown on all pages except start) -->
-  <div class="navbar" id="navbar" style="display:none">
-    <button class="nb-btn nb-back" id="nb-back" onclick="goBack()">&#x2190; رجوع</button>
-    <span class="nb-mode" id="nb-mode"></span>
-    <button class="nb-btn nb-home" id="nb-home" onclick="showPage('home')" style="display:none">&#x2302; الرئيسية</button>
+  <!-- NAVBAR (hidden on start) -->
+  <div id="navbar" style="display:none">
+    <button id="btn-back" onclick="goBack()" style="display:none">→ رجوع</button>
+    <span class="nb-space"></span>
+    <button id="btn-home" onclick="goHome()" style="display:none">🏠 الرئيسية</button>
   </div>
 
-  <!-- PAGES -->
-  <div class="pages">
-
-    <!-- PAGE: START -->
-    <div class="page active" id="pg-start">
-      <div class="start-hero">
-        <div class="sh-emoji">🎓</div>
-        <div class="sh-title">مرحباً بك في منصة الاختبارات</div>
-        <div class="sh-sub">اختر نمط الاختبار للبدء</div>
-      </div>
-      <div class="mode-grid">
-        <div class="mode-card active" id="mc-train" onclick="pickMode('train')">
-          <div class="mci">📖</div>
-          <div class="mct">تدريبي</div>
-          <div class="mcs">الإجابة تظهر فوراً</div>
-        </div>
-        <div class="mode-card" id="mc-exam" onclick="pickMode('exam')">
-          <div class="mci">📝</div>
-          <div class="mct">امتحاني</div>
-          <div class="mcs">النتيجة في النهاية</div>
-        </div>
-      </div>
-      <button class="btn-main" onclick="showPage('home')">ابدأ الآن &larr;</button>
+  <!-- PAGE: START -->
+  <div id="pg-start" class="pg">
+    <div class="welcome">
+      <div class="w-icon">🎓</div>
+      <div class="w-title">مرحباً بك في منصة الاختبارات الذكية</div>
+      <div class="w-sub">اختر نمط الاختبار للبدء</div>
     </div>
-
-    <!-- PAGE: HOME (main menu) -->
-    <div class="page" id="pg-home">
-      <div class="menu-grid">
-        <div class="menu-card mc-blue"   onclick="showPage('lessons')">
-          <div class="mc-ico">📖</div>
-          <div class="mc-ttl">اختبار حسب الدرس</div>
-          <div class="mc-sub">اختر فصلاً ثم درساً</div>
-        </div>
-        <div class="menu-card mc-green"  onclick="showPage('units')">
-          <div class="mc-ico">🏛️</div>
-          <div class="mc-ttl">اختبار حسب الوحدة</div>
-          <div class="mc-sub">٢٠ سؤالاً عشوائياً</div>
-        </div>
-        <div class="menu-card mc-gold"   onclick="doMinisterial()">
-          <div class="mc-ico">🌟</div>
-          <div class="mc-ttl">أسئلة وزارية</div>
-          <div class="mc-sub">٤٠ سؤالاً شاملاً</div>
-        </div>
-        <div class="menu-card mc-purple" onclick="showPage('exams')">
-          <div class="mc-ico">📝</div>
-          <div class="mc-ttl">أسئلة التقويم</div>
-          <div class="mc-sub">امتحانات الفصلين</div>
-        </div>
-      </div>
+    <div class="mode-row">
+      <button class="mbtn active" id="btn-train" onclick="setMode('train')">
+        <span class="mb-icon">📖</span>
+        <span class="mb-name">تدريبي</span>
+        <span class="mb-desc">الإجابة تظهر فوراً</span>
+      </button>
+      <button class="mbtn" id="btn-exam" onclick="setMode('exam')">
+        <span class="mb-icon">📝</span>
+        <span class="mb-name">امتحاني</span>
+        <span class="mb-desc">النتيجة في النهاية</span>
+      </button>
     </div>
+    <button class="btn-enter" onclick="startApp()">ابدأ الآن ←</button>
+  </div>
 
-    <!-- PAGE: LESSONS (pick semester) -->
-    <div class="page" id="pg-lessons">
-      <div class="pg-title">📖 اختبار حسب الدرس</div>
-      <div class="sem-grid">
-        <div class="sem-card sc1" onclick="showPage('lessons-f1')">
-          <div class="sci">📘</div><div class="scn">الفصل الأول</div><div class="scc" id="cnt-f1"></div>
-        </div>
-        <div class="sem-card sc2" onclick="showPage('lessons-f2')">
-          <div class="sci">📗</div><div class="scn">الفصل الثاني</div><div class="scc" id="cnt-f2"></div>
-        </div>
-      </div>
-    </div>
+  <!-- PAGE: HOME -->
+  <div id="pg-home" class="pg" style="display:none"></div>
 
-    <!-- PAGE: LESSONS F1 -->
-    <div class="page" id="pg-lessons-f1">
-      <div class="pg-title">📘 الفصل الأول</div>
-      <div id="list-f1"></div>
-    </div>
+  <!-- PAGE: LESSONS -->
+  <div id="pg-lessons" class="pg" style="display:none"></div>
 
-    <!-- PAGE: LESSONS F2 -->
-    <div class="page" id="pg-lessons-f2">
-      <div class="pg-title">📗 الفصل الثاني</div>
-      <div id="list-f2"></div>
-    </div>
+  <!-- PAGE: UNITS -->
+  <div id="pg-units" class="pg" style="display:none"></div>
 
-    <!-- PAGE: LESSON ACTION -->
-    <div class="page" id="pg-lesson-action">
-      <div class="action-card" id="lesson-action-content"></div>
-    </div>
+  <!-- PAGE: EXAMS -->
+  <div id="pg-exams" class="pg" style="display:none"></div>
 
-    <!-- PAGE: UNITS -->
-    <div class="page" id="pg-units">
-      <div class="pg-title">🏛️ اختبار حسب الوحدة</div>
-      <div class="units-grid" id="units-grid"></div>
-    </div>
+  <!-- PAGE: QUIZ -->
+  <div id="pg-quiz" class="pg" style="display:none"></div>
 
-    <!-- PAGE: EXAMS -->
-    <div class="page" id="pg-exams">
-      <div class="pg-title">📝 أسئلة التقويم</div>
-      <div class="sem-grid">
-        <div class="sem-card sc1" onclick="showPage('exams-f1')">
-          <div class="sci">📘</div><div class="scn">الفصل الأول</div><div class="scc">٤ امتحانات</div>
-        </div>
-        <div class="sem-card sc2" onclick="showPage('exams-f2')">
-          <div class="sci">📗</div><div class="scn">الفصل الثاني</div><div class="scc">٣ امتحانات</div>
-        </div>
-      </div>
-    </div>
+  <!-- PAGE: RESULT -->
+  <div id="pg-result" class="pg" style="display:none"></div>
 
-    <!-- PAGE: EXAMS F1 -->
-    <div class="page" id="pg-exams-f1">
-      <div class="pg-title">📘 امتحانات الفصل الأول</div>
-      <div id="examlist-f1"></div>
-    </div>
+</div>
 
-    <!-- PAGE: EXAMS F2 -->
-    <div class="page" id="pg-exams-f2">
-      <div class="pg-title">📗 امتحانات الفصل الثاني</div>
-      <div id="examlist-f2"></div>
-    </div>
-
-    <!-- PAGE: QUIZ -->
-    <div class="page" id="pg-quiz">
-      <div class="quiz-bar">
-        <div class="qb-title" id="qb-title"></div>
-        <div class="qb-right">
-          <span class="qb-mode" id="qb-mode"></span>
-          <span class="qb-timer" id="qb-timer" style="display:none">⏱ --:--</span>
-        </div>
-      </div>
-      <div class="prog-wrap">
-        <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
-        <div class="prog-txt" id="prog-txt">0 / 0</div>
-      </div>
-      <div id="quiz-area"></div>
-      <button class="btn-finish" onclick="finishQuiz()">✅ إنهاء وعرض النتيجة</button>
-    </div>
-
-    <!-- PAGE: RESULT -->
-    <div class="page" id="pg-result">
-      <div id="result-content"></div>
-    </div>
-
-  </div><!-- /pages -->
-</div><!-- /app -->
-
-<div class="toast" id="toast"></div>
 <script src="questions.js"></script>
 <script src="script.js"></script>
+<script>
+  // Show start page on load
+  showPage('start');
+</script>
 </body>
 </html>

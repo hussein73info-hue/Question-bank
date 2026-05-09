@@ -2,14 +2,14 @@
 //  CURRICULUM
 // ══════════════════════════════════════════════
 var CUR = {
-  1:{name:'الفصل الأول',units:[
+  1:{name:'الفصل الأول',color:'#1a5276',units:[
     {id:1,name:'الدورة المحاسبية',lessons:['الدورة المحاسبية المفهوم والمراحل','نظرية القيد المزدوج والعمليات المالية','تسجيل القيود المحاسبية','دفتر اليومية','دفتر الأستاذ','ميزان المراجعة']},
     {id:2,name:'القوائم المالية',lessons:['القوائم المالية الأنواع والأهمية','إقفال الحسابات']},
     {id:3,name:'التحليل المالي',lessons:['مفهوم التحليل المالي وأهميته','تقنيات التحليل المالي','التحليل المالي والنسب','استخدامات التحليل المالي']},
     {id:4,name:'الأسواق المالية',lessons:['مفهوم الأسواق المالية وأنواعها وأهميتها','مفهوم الأصول المالية وأنواعها','مفهوم التداول وأنواعه وآلياته','دور التكنولوجيا في الأسواق المالية','بورصة عمان']},
     {id:5,name:'البنك المركزي الأردني',lessons:['البنك المركزي والسياسة النقدية','دور البنك المركزي الأردني في حماية المستهلك المالي','دور البنك المركزي الأردني في نشر الثقافة المالية المجتمعية','دور البنك المركزي الأردني في المحافظة على الاستقرار المصرفي والمالي']}
   ]},
-  2:{name:'الفصل الثاني',units:[
+  2:{name:'الفصل الثاني',color:'#1e6b4a',units:[
     {id:6,name:'المؤسسات المالية الدولية',lessons:['المؤسسات المالية الدولية: نشأتها، وأنواعها','صندوق النقد الدولي','البنك الدولي']},
     {id:7,name:'الاستدامة المالية',lessons:['مقدمة في الاستدامة المالية','أهداف الاستدامة المالية','الاستدامة المالية: التحديات والحلول','الاقتصاد الأخضر والاستدامة']},
     {id:8,name:'الذكاء الاصطناعي التوليدي',lessons:['الذكاء الاصطناعي التوليدي','الذكاء الاصطناعي التوليدي وعالم المال','المستشار المالي','الذكاء الاصطناعي التوليدي وخصوصية البيانات','الذكاء الاصطناعي التوليدي وأخلاقيات الأعمال']},
@@ -18,494 +18,475 @@ var CUR = {
 };
 
 var LBL = ['أ','ب','ج','د'];
-var minCounter = 0;
 var currentMode = 'train';
 var currentQuiz = [];
 var userAnswers = {};
-var timerIv = null;
+var timerInterval = null;
 var timeLeft = 0;
-// Navigation history stack — each entry is a page id string
-var history = [];
-// Lesson action state
-var pendingLesson = null;
+var minCounter = 0;
+// Navigation: simple stack of page IDs
+var pageHistory = [];
+var currentPageId = 'start';
 
 // ══════════════════════════════════════════════
-//  INIT
+//  PAGE NAVIGATION
 // ══════════════════════════════════════════════
-function init() {
-  buildLessonLists();
-  buildUnitGrid();
-  buildExamLists();
-  updateCounts();
-  showPage('start');
-}
-
-// ══════════════════════════════════════════════
-//  PAGE NAVIGATION — single source of truth
-// ══════════════════════════════════════════════
-function showPage(pageId) {
-  // Hide all pages
-  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
-  // Show target
-  var el = document.getElementById('pg-' + pageId);
-  if (!el) { console.error('Page not found: pg-' + pageId); return; }
-  el.classList.add('active');
+function showPage(id) {
+  document.querySelectorAll('.pg').forEach(function(p){ p.style.display='none'; });
+  var el = document.getElementById('pg-'+id);
+  if (!el) { console.error('Missing page: pg-'+id); return; }
+  el.style.display = 'block';
+  currentPageId = id;
   window.scrollTo(0,0);
-  updateNavBar(pageId);
+  // Update navbar buttons
+  var nb = document.getElementById('navbar');
+  if (nb) nb.style.display = (id==='start') ? 'none' : 'flex';
+  var btnBack = document.getElementById('btn-back');
+  var btnHome = document.getElementById('btn-home');
+  if (btnBack) btnBack.style.display = (id==='start'||id==='home') ? 'none' : 'inline-flex';
+  if (btnHome) btnHome.style.display = (id==='start'||id==='home') ? 'none' : 'inline-flex';
 }
 
-function navigateTo(pageId) {
-  // Push current page to history before going
-  var current = getCurrentPage();
-  if (current && current !== pageId) history.push(current);
-  showPage(pageId);
-}
-
-function getCurrentPage() {
-  var active = document.querySelector('.page.active');
-  if (!active) return null;
-  return active.id.replace('pg-','');
+function goTo(id) {
+  pageHistory.push(currentPageId);
+  showPage(id);
 }
 
 function goBack() {
-  if (history.length > 0) {
-    var prev = history.pop();
-    showPage(prev);
+  if (pageHistory.length > 0) {
+    showPage(pageHistory.pop());
   } else {
     showPage('home');
   }
 }
 
-function updateNavBar(pageId) {
-  var navbar  = document.getElementById('navbar');
-  var backBtn = document.getElementById('nb-back');
-  var homeBtn = document.getElementById('nb-home');
-  var modeEl  = document.getElementById('nb-mode');
-
-  if (pageId === 'start') {
-    navbar.style.display = 'none';
-    return;
-  }
-  navbar.style.display = 'flex';
-
-  // Back button: always shown except on home
-  backBtn.style.display = (pageId === 'home') ? 'none' : 'flex';
-
-  // Home button: shown on all pages except start and home
-  homeBtn.style.display = (pageId === 'home') ? 'none' : 'flex';
-
-  // Mode label
-  modeEl.textContent = currentMode === 'exam' ? '📝 نمط امتحاني' : '📖 نمط تدريبي';
+function goHome() {
+  pageHistory = [];
+  renderHome();
+  showPage('home');
 }
 
 // ══════════════════════════════════════════════
 //  START SCREEN
 // ══════════════════════════════════════════════
-function pickMode(m) {
+function setMode(m) {
   currentMode = m;
-  document.getElementById('mc-train').classList.toggle('active', m === 'train');
-  document.getElementById('mc-exam').classList.toggle('active', m === 'exam');
+  document.getElementById('btn-train').classList.toggle('active', m==='train');
+  document.getElementById('btn-exam').classList.toggle('active', m==='exam');
 }
 
-// Override showPage for start → home transition (clear history)
-function goHome() {
-  history = [];
+function startApp() {
+  pageHistory = [];
+  renderHome();
   showPage('home');
 }
 
 // ══════════════════════════════════════════════
-//  BUILD LESSON LISTS
+//  HOME PAGE
 // ══════════════════════════════════════════════
-function buildLessonLists() {
-  [1,2].forEach(function(sem) {
-    var html = '';
-    CUR[sem].units.forEach(function(u) {
-      var hasLessons = u.lessons.some(function(l){
-        return bank.filter(function(q){return q.lesson===l&&!q._examKey;}).length > 0;
-      });
-      if (!hasLessons) return;
-      html += '<div class="unit-sec"><div class="us-title">الوحدة ' + u.id + ': ' + u.name + '</div>';
-      u.lessons.forEach(function(l) {
-        var cnt = bank.filter(function(q){return q.lesson===l&&!q._examKey;}).length;
-        if (!cnt) return;
-        html += '<div class="lesson-row" onclick="openLesson(\'' + esc(l) + '\',\'' + esc(u.name) + '\',' + sem + ')">' +
-          '<div class="lr-ico">📄</div>' +
-          '<div class="lr-info"><div class="lr-name">' + l + '</div><div class="lr-cnt">' + cnt + ' سؤال</div></div>' +
-          '<div class="lr-arr">&#8592;</div></div>';
-      });
-      html += '</div>';
-    });
-    document.getElementById('list-f' + sem).innerHTML = html;
+function renderHome() {
+  var modeLabel = currentMode==='exam' ? '📝 نمط امتحاني' : '📖 نمط تدريبي';
+  var html =
+    '<div class="mode-indicator">' + modeLabel +
+      ' <button class="btn-change-mode" onclick="showPage(\'start\')">تغيير</button>' +
+    '</div>' +
+    '<div class="menu-grid">' +
+      card('📖','card-blue', 'اختبار حسب الدرس',  'اختر فصلاً ثم درساً', "renderLessonPage(); goTo('lessons')") +
+      card('🏛️','card-green','اختبار حسب الوحدة', '20 سؤالاً عشوائياً',  "renderUnitPage(); goTo('units')") +
+      card('🌟','card-gold', 'أسئلة وزارية',       'نموذج 40 سؤالاً',     "launchMinisterial()") +
+      card('📝','card-purple','أسئلة التقويم',      'امتحانات الفصلين',    "renderExamPage(); goTo('exams')") +
+    '</div>';
+  document.getElementById('pg-home').innerHTML = html;
+}
+
+function card(icon, cls, title, sub, onclick) {
+  return '<div class="menu-card '+cls+'" onclick="'+onclick+'">' +
+    '<div class="mc-icon">'+icon+'</div>' +
+    '<div class="mc-title">'+title+'</div>' +
+    '<div class="mc-sub">'+sub+'</div>' +
+  '</div>';
+}
+
+// ══════════════════════════════════════════════
+//  LESSON PAGE
+// ══════════════════════════════════════════════
+function renderLessonPage() {
+  var html = '<div class="page-title">📖 اختبار حسب الدرس</div>' +
+    '<div class="sem-cards">';
+  [1,2].forEach(function(s){
+    var cnt = bank.filter(function(q){return q.sem===s&&!q._examKey;}).length;
+    html += '<div class="sem-card sem'+s+'" onclick="renderSemLessons('+s+')">' +
+      '<div class="sc-icon">'+(s===1?'📘':'📗')+'</div>' +
+      '<div class="sc-name">'+CUR[s].name+'</div>' +
+      '<div class="sc-cnt">'+cnt+' سؤال</div>' +
+    '</div>';
   });
+  html += '</div><div id="sem-lessons-area"></div>';
+  document.getElementById('pg-lessons').innerHTML = html;
 }
 
-function updateCounts() {
-  var c1 = bank.filter(function(q){return q.sem===1&&!q._examKey;}).length;
-  var c2 = bank.filter(function(q){return q.sem===2&&!q._examKey;}).length;
-  document.getElementById('cnt-f1').textContent = c1 + ' سؤال';
-  document.getElementById('cnt-f2').textContent = c2 + ' سؤال';
-}
-
-function openLesson(lesson, unitName, sem) {
-  pendingLesson = {lesson:lesson, unitName:unitName, sem:sem};
-  var cnt = bank.filter(function(q){return q.lesson===lesson&&!q._examKey;}).length;
-  document.getElementById('lesson-action-content').innerHTML =
-    '<div class="ac-lesson">' + lesson + '</div>' +
-    '<div class="ac-unit">' + unitName + ' | ' + CUR[sem].name + '</div>' +
-    '<div class="ac-cnt">' + cnt + ' سؤال متاح</div>' +
-    '<button class="btn-launch" onclick="startLesson()">🚀 ابدأ الاختبار الآن</button>';
-  navigateTo('lesson-action');
-}
-
-function startLesson() {
-  if (!pendingLesson) return;
-  var qs = bank.filter(function(q){return q.lesson===pendingLesson.lesson&&!q._examKey;});
-  launchQuiz(qs, pendingLesson.lesson);
-}
-
-// ══════════════════════════════════════════════
-//  BUILD UNIT GRID
-// ══════════════════════════════════════════════
-function buildUnitGrid() {
+function renderSemLessons(sem) {
   var html = '';
-  [1,2].forEach(function(sem) {
-    CUR[sem].units.forEach(function(u) {
+  CUR[sem].units.forEach(function(u){
+    var unitHasQs = u.lessons.some(function(l){
+      return bank.filter(function(q){return q.lesson===l&&!q._examKey;}).length > 0;
+    });
+    if (!unitHasQs) return;
+    html += '<div class="unit-sec">' +
+      '<div class="unit-sec-hdr">الوحدة '+u.id+': '+u.name+'</div>';
+    u.lessons.forEach(function(l){
+      var cnt = bank.filter(function(q){return q.lesson===l&&!q._examKey;}).length;
+      if (!cnt) return;
+      html += '<div class="lesson-row" onclick="showLessonAction(\''+esc(l)+'\',\''+esc(u.name)+'\')">' +
+        '<span class="lr-icon">📄</span>' +
+        '<span class="lr-name">'+l+'</span>' +
+        '<span class="lr-cnt">'+cnt+'ق</span>' +
+        '<span class="lr-arrow">←</span>' +
+      '</div>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('sem-lessons-area').innerHTML = html;
+  document.getElementById('sem-lessons-area').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function showLessonAction(lesson, unitName) {
+  var cnt = bank.filter(function(q){return q.lesson===lesson&&!q._examKey;}).length;
+  var existing = document.getElementById('lesson-action-box');
+  if (existing) existing.remove();
+  var box = document.createElement('div');
+  box.id = 'lesson-action-box';
+  box.className = 'action-box';
+  box.innerHTML =
+    '<div class="ab-lesson">📄 '+lesson+'</div>' +
+    '<div class="ab-unit">'+unitName+'</div>' +
+    '<div class="ab-cnt">'+cnt+' سؤال متاح</div>' +
+    '<button class="btn-launch" onclick="launchQuiz(\'lesson\',{lessonName:\''+esc(lesson)+'\'},\''+esc(lesson)+'\')">🚀 ابدأ الاختبار</button>';
+  document.getElementById('sem-lessons-area').appendChild(box);
+  box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ══════════════════════════════════════════════
+//  UNIT PAGE
+// ══════════════════════════════════════════════
+function renderUnitPage() {
+  var html = '<div class="page-title">🏛️ اختبار حسب الوحدة</div>' +
+    '<div class="units-grid">';
+  [1,2].forEach(function(s){
+    CUR[s].units.forEach(function(u){
       var cnt = bank.filter(function(q){return q.unit===u.id&&!q._examKey;}).length;
-      html += '<div class="unit-card uc-sem' + sem + '" onclick="startUnit(' + u.id + ',\'' + esc(u.name) + '\')">' +
-        '<div class="uc-num">و' + u.id + '</div>' +
-        '<div class="uc-name">' + u.name + '</div>' +
-        '<div class="uc-sem">' + CUR[sem].name + '</div>' +
-        '<div class="uc-badge">٢٠ سؤالاً | ' + cnt + ' متاح</div>' +
+      html += '<div class="unit-card-m usem'+s+'" onclick="launchQuiz(\'unit\',{unitId:'+u.id+',count:20},\''+u.name+'\')">' +
+        '<div class="ucm-num">و'+u.id+'</div>' +
+        '<div class="ucm-name">'+u.name+'</div>' +
+        '<div class="ucm-sem">'+CUR[s].name+'</div>' +
+        '<div class="ucm-cnt">'+cnt+' سؤال</div>' +
+        '<div class="ucm-badge">20 سؤالاً</div>' +
       '</div>';
     });
   });
-  document.getElementById('units-grid').innerHTML = html;
-}
-
-function startUnit(unitId, unitName) {
-  var qs = shuffle(bank.filter(function(q){return q.unit===unitId&&!q._examKey;})).slice(0,20);
-  if (!qs.length) { showToast('لا توجد أسئلة','err'); return; }
-  launchQuiz(qs, unitName);
+  html += '</div>';
+  document.getElementById('pg-units').innerHTML = html;
 }
 
 // ══════════════════════════════════════════════
 //  MINISTERIAL
 // ══════════════════════════════════════════════
-function doMinisterial() {
+function launchMinisterial() {
   minCounter++;
-  var allUnits = [];
-  [1,2].forEach(function(sem){ CUR[sem].units.forEach(function(u){ allUnits.push(u.id); }); });
-  var qs = [];
-  var perU = Math.floor(40/allUnits.length);
-  allUnits.forEach(function(uid){
-    var uqs = shuffle(bank.filter(function(q){return q.unit===uid&&!q._examKey;})).slice(0,perU);
-    qs = qs.concat(uqs);
-  });
-  qs = shuffle(qs).slice(0,40);
-  if (!qs.length) { showToast('لا توجد أسئلة','err'); return; }
-  launchQuiz(qs, 'النموذج الوزاري رقم ' + minCounter);
+  launchQuiz('ministerial', {}, 'النموذج الوزاري رقم ' + minCounter);
 }
 
 // ══════════════════════════════════════════════
-//  BUILD EXAM LISTS
+//  EXAM PAGE
 // ══════════════════════════════════════════════
-function buildExamLists() {
-  var exF1 = [
-    {key:'tq1_f1',label:'التقويم الأول'},
-    {key:'tq2_f1',label:'التقويم الثاني'},
-    {key:'tq3_f1',label:'التقويم الثالث'},
-    {key:'final_f1',label:'الاختبار النهائي'}
-  ];
-  var exF2 = [
-    {key:'tq1_f2',label:'التقويم الأول'},
-    {key:'tq2_f2',label:'التقويم الثاني'},
-    {key:'final_f2',label:'الاختبار النهائي'}
-  ];
-  document.getElementById('examlist-f1').innerHTML = buildExamListHtml(exF1);
-  document.getElementById('examlist-f2').innerHTML = buildExamListHtml(exF2);
+function renderExamPage() {
+  var html = '<div class="page-title">📝 أسئلة التقويم</div>' +
+    '<div class="sem-cards">' +
+    '<div class="sem-card sem1" onclick="renderSemExams(1)">'+
+      '<div class="sc-icon">📘</div><div class="sc-name">الفصل الأول</div>'+
+      '<div class="sc-cnt">تقويمي ١ و٢ و٣ + النهائي</div></div>'+
+    '<div class="sem-card sem2" onclick="renderSemExams(2)">'+
+      '<div class="sc-icon">📗</div><div class="sc-name">الفصل الثاني</div>'+
+      '<div class="sc-cnt">تقويمي ١ و٢ + النهائي</div></div>'+
+    '</div><div id="sem-exam-area"></div>';
+  document.getElementById('pg-exams').innerHTML = html;
 }
 
-function buildExamListHtml(exams) {
+function renderSemExams(sem) {
+  var list = sem===1
+    ? [{k:'tq1_f1',label:'التقويم الأول'},{k:'tq2_f1',label:'التقويم الثاني'},{k:'tq3_f1',label:'التقويم الثالث'},{k:'final_f1',label:'الاختبار النهائي'}]
+    : [{k:'tq1_f2',label:'التقويم الأول'},{k:'tq2_f2',label:'التقويم الثاني'},{k:'final_f2',label:'الاختبار النهائي'}];
   var html = '<div class="exam-list">';
-  exams.forEach(function(e) {
-    var cnt = bank.filter(function(q){return q._examKey===e.key;}).length;
-    if (!cnt) return;
-    html += '<div class="exam-row" onclick="startExam(\'' + e.key + '\',\'' + esc(e.label) + '\')">' +
-      '<div class="er-ico">📋</div>' +
-      '<div class="er-info"><div class="er-name">' + e.label + '</div><div class="er-cnt">' + cnt + ' سؤال</div></div>' +
-      '<div class="er-btn">ابدأ &#8592;</div>' +
+  list.forEach(function(e){
+    var qs = bank.filter(function(q){return q._examKey===e.k;});
+    if (!qs.length) return;
+    html += '<div class="exam-item" onclick="launchQuiz(\'exam\',{examKey:\''+e.k+'\'},\''+e.label+' — '+CUR[sem].name+'\')">' +
+      '<span class="ei-icon">📋</span>' +
+      '<span class="ei-name">'+e.label+'</span>' +
+      '<span class="ei-cnt">'+qs.length+' سؤال</span>' +
+      '<span class="ei-go">ابدأ ←</span>' +
     '</div>';
   });
-  return html + '</div>';
-}
-
-function startExam(key, label) {
-  var qs = bank.filter(function(q){return q._examKey===key;});
-  if (!qs.length) { showToast('لا توجد أسئلة','err'); return; }
-  launchQuiz(qs, label);
+  html += '</div>';
+  document.getElementById('sem-exam-area').innerHTML = html;
+  document.getElementById('sem-exam-area').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 // ══════════════════════════════════════════════
 //  QUIZ ENGINE
 // ══════════════════════════════════════════════
-function launchQuiz(qs, title) {
+function selectQuestions(type, params) {
+  params = params || {};
+  var qs = [];
+  if (type==='lesson') {
+    qs = bank.filter(function(q){return q.lesson===params.lessonName&&!q._examKey;});
+  } else if (type==='unit') {
+    qs = shuf(bank.filter(function(q){return q.unit===params.unitId&&!q._examKey;})).slice(0,params.count||20);
+  } else if (type==='ministerial') {
+    var uids=[1,2,3,4,5,6,7,8,9];
+    var per=Math.floor(40/uids.length);
+    uids.forEach(function(uid){
+      qs=qs.concat(shuf(bank.filter(function(q){return q.unit===uid&&!q._examKey;})).slice(0,per));
+    });
+    qs=shuf(qs).slice(0,40);
+  } else if (type==='exam') {
+    qs = bank.filter(function(q){return q._examKey===params.examKey;});
+  }
+  return qs;
+}
+
+function launchQuiz(type, params, title) {
+  var qs = selectQuestions(type, params);
+  if (!qs.length) { alert('لا توجد أسئلة في هذا القسم'); return; }
   currentQuiz = qs;
   userAnswers = {};
-  clearInterval(timerIv);
+  renderQuiz(title);
+  clearInterval(timerInterval);
+  if (currentMode==='exam') startTimer(qs.length*60);
+  goTo('quiz');
+}
 
-  document.getElementById('qb-title').textContent = title || 'الاختبار';
-  document.getElementById('qb-mode').textContent = currentMode === 'exam' ? '📝 امتحاني' : '📖 تدريبي';
-
-  var html = '';
-  currentQuiz.forEach(function(q,i) {
-    // Only show non-empty options
-    var opts = (q.options||[]).filter(function(o){return o && o.trim();});
-    html += '<div class="qcard" id="qc-'+i+'">'+
-      '<div class="qcard-hdr">'+
-        '<span class="qbadge">س'+(i+1)+'</span>'+
-        '<span class="qmeta">'+(q.lesson||'')+'</span>'+
-      '</div>'+
-      '<div class="qtext">'+q.text+'</div>'+
-      '<div class="opts-list" id="ol-'+i+'">';
-    opts.forEach(function(opt,j){
-      html += '<div class="opt" id="o-'+i+'-'+j+'" onclick="pick('+i+','+j+')">'+
-        '<span class="ocircle">'+LBL[j]+'</span>'+
-        '<span class="otext">'+opt+'</span>'+
+function renderQuiz(title) {
+  var modeTxt = currentMode==='exam' ? '📝 امتحاني' : '📖 تدريبي';
+  var html =
+    '<div class="quiz-hdr">' +
+      '<div class="qhdr-row">' +
+        '<span class="qhdr-title">'+(title||'الاختبار')+'</span>' +
+        '<span class="qhdr-mode">'+modeTxt+'</span>' +
+        (currentMode==='exam'?'<span id="qtimer" class="qtimer"></span>':'') +
+      '</div>' +
+      '<div class="qprog-bar"><div class="qprog-fill" id="qpfill" style="width:0%"></div></div>' +
+      '<div class="qprog-txt" id="qptxt">0 / '+currentQuiz.length+'</div>' +
+    '</div>' +
+    '<div id="qarea">';
+  currentQuiz.forEach(function(q,i){
+    var validOpts = (q.options||[]).filter(function(o){return o&&o.trim();});
+    html += '<div class="qcard" id="qcard-'+i+'">' +
+      '<div class="qcard-top">' +
+        '<span class="qbadge">س'+(i+1)+'</span>' +
+        '<span class="qmeta">'+(q.lesson||'')+'</span>' +
+      '</div>' +
+      '<div class="qtext">'+q.text+'</div>' +
+      '<div class="qopts">';
+    validOpts.forEach(function(opt,j){
+      html += '<div class="qopt" id="qopt-'+i+'-'+j+'" onclick="pick('+i+','+j+')">' +
+        '<span class="qoc">'+LBL[j]+'</span>' +
+        '<span class="qot">'+opt+'</span>' +
       '</div>';
     });
     html += '</div>';
-    if (currentMode==='train') html += '<div class="train-fb" id="fb-'+i+'" style="display:none"></div>';
+    if (currentMode==='train') html += '<div class="qfb" id="qfb-'+i+'" style="display:none"></div>';
     html += '</div>';
   });
-
-  document.getElementById('quiz-area').innerHTML = html;
-  updateProg(0);
-
-  if (currentMode==='exam') {
-    var sec = currentQuiz.length * 60;
-    timeLeft = sec;
-    var tel = document.getElementById('qb-timer');
-    tel.style.display = 'block';
-    updTimer();
-    timerIv = setInterval(function(){
-      timeLeft--;
-      updTimer();
-      if (timeLeft<=0){ clearInterval(timerIv); finishQuiz(); }
-    },1000);
-  } else {
-    document.getElementById('qb-timer').style.display = 'none';
-  }
-
-  navigateTo('quiz');
+  html += '</div>';
+  document.getElementById('pg-quiz').innerHTML = html +
+    '<button class="btn-finish" onclick="finishQuiz()">✅ إنهاء وعرض النتيجة</button>';
+  updProgress(0);
 }
 
 function pick(qi, oi) {
   var q = currentQuiz[qi];
-  var opts = (q.options||[]).filter(function(o){return o && o.trim();});
-  var correctIdx = q.answer; // answer index within full options array
-  // Map correct answer to filtered opts index
-  var filteredCorrect = 0;
-  var fullOpts = q.options||[];
-  var validCount = 0;
-  for (var k=0; k<fullOpts.length; k++) {
-    if (!fullOpts[k] || !fullOpts[k].trim()) continue;
-    if (k === correctIdx) { filteredCorrect = validCount; break; }
-    validCount++;
-  }
-
-  // In train mode: lock after first answer
+  var validOpts = (q.options||[]).filter(function(o){return o&&o.trim();});
+  // Train: lock after answer. Exam: allow changing
   if (currentMode==='train' && userAnswers[qi]!==undefined) return;
-
   userAnswers[qi] = oi;
 
-  // Clear previous styling
-  var allOpts = document.querySelectorAll('[id^="o-'+qi+'-"]');
-  allOpts.forEach(function(el){
-    el.classList.remove('exam-sel','correct','wrong');
-    el.style.pointerEvents = '';
-  });
-
-  var selEl = document.getElementById('o-'+qi+'-'+oi);
-  if (!selEl) return;
-
-  if (currentMode==='exam') {
-    selEl.classList.add('exam-sel');
-  } else {
-    // Train mode: show correct/wrong immediately, lock all
-    allOpts.forEach(function(el,j){
-      el.style.pointerEvents = 'none';
-      if (j===filteredCorrect) el.classList.add('correct');
-      else if (j===oi && oi!==filteredCorrect) el.classList.add('wrong');
-    });
-    var fb = document.getElementById('fb-'+qi);
-    if (fb) {
-      var isOk = oi===filteredCorrect;
-      fb.style.display='block';
-      fb.className='train-fb '+(isOk?'fb-ok':'fb-err');
-      fb.innerHTML = isOk
-        ? '✅ إجابة صحيحة! أحسنت.'
-        : '❌ خطأ — الصحيح: <strong>'+LBL[filteredCorrect]+' — '+opts[filteredCorrect]+'</strong>';
-    }
+  // Clear all opts for this question
+  for (var j=0; j<validOpts.length; j++) {
+    var el = document.getElementById('qopt-'+qi+'-'+j);
+    if (el) { el.className='qopt'; }
   }
-  updateProg(Object.keys(userAnswers).length);
+
+  if (currentMode==='train') {
+    // Show correct/wrong immediately
+    for (var j=0; j<validOpts.length; j++) {
+      var el = document.getElementById('qopt-'+qi+'-'+j);
+      if (!el) continue;
+      el.style.pointerEvents='none';
+      if (j===q.answer) el.className='qopt correct';
+      else if (j===oi && oi!==q.answer) el.className='qopt wrong';
+    }
+    var fb = document.getElementById('qfb-'+qi);
+    if (fb) {
+      fb.style.display='block';
+      var ok = oi===q.answer;
+      fb.className='qfb '+(ok?'fb-ok':'fb-err');
+      fb.innerHTML = ok
+        ? '✅ إجابة صحيحة! أحسنت.'
+        : '❌ خطأ — الصحيح: <strong>'+LBL[q.answer]+' — '+validOpts[q.answer]+'</strong>';
+    }
+  } else {
+    // Exam: just highlight selected
+    var sel = document.getElementById('qopt-'+qi+'-'+oi);
+    if (sel) sel.className='qopt exam-sel';
+  }
+  updProgress(Object.keys(userAnswers).length);
 }
 
-function updateProg(answered) {
+function updProgress(n) {
   var total = currentQuiz.length;
-  document.getElementById('prog-fill').style.width = Math.round(answered/total*100)+'%';
-  document.getElementById('prog-txt').textContent = answered+' / '+total;
+  var pct = Math.round(n/total*100);
+  var f = document.getElementById('qpfill');
+  var t = document.getElementById('qptxt');
+  if (f) f.style.width=pct+'%';
+  if (t) t.textContent=n+' / '+total;
 }
 
 function finishQuiz() {
-  clearInterval(timerIv);
+  clearInterval(timerInterval);
   showResults();
 }
 
 // ══════════════════════════════════════════════
-//  RESULTS
+//  RESULTS + ANALYTICS
 // ══════════════════════════════════════════════
 function showResults() {
   var total=currentQuiz.length, correct=0, wrong=0, skipped=0;
   currentQuiz.forEach(function(q,i){
-    var qa = userAnswers[i];
-    if (qa===undefined) { skipped++; return; }
-    // Map answer
-    var fullOpts=q.options||[], valid=0, fc=0;
-    for (var k=0;k<fullOpts.length;k++){
-      if (!fullOpts[k]||!fullOpts[k].trim()) continue;
-      if (k===q.answer){fc=valid;break;}
-      valid++;
-    }
-    if (qa===fc) correct++; else wrong++;
+    if (userAnswers[i]===undefined) skipped++;
+    else if (userAnswers[i]===q.answer) correct++;
+    else wrong++;
   });
-  var pct=Math.round(correct/total*100);
-  var gr=pct>=90?{g:'ممتاز',c:'#27ae60',bg:'#d4edda',i:'🏆'}
-        :pct>=80?{g:'جيد جداً',c:'#2980b9',bg:'#d4e8f5',i:'⭐'}
-        :pct>=70?{g:'جيد',c:'#8e44ad',bg:'#ead7f5',i:'👍'}
-        :pct>=60?{g:'مقبول',c:'#f39c12',bg:'#fef9e7',i:'📖'}
-        :{g:'راسب',c:'#e74c3c',bg:'#f8d7da',i:'💪'};
+  var pct = Math.round(correct/total*100);
+  var g = pct>=90?{t:'ممتاز 🏆',c:'#27ae60',bg:'#d4edda'}
+    :pct>=80?{t:'جيد جداً ⭐',c:'#2980b9',bg:'#d4e8f5'}
+    :pct>=70?{t:'جيد 👍',c:'#8e44ad',bg:'#ead7f5'}
+    :pct>=60?{t:'مقبول 📖',c:'#f39c12',bg:'#fef9e7'}
+    :{t:'راسب 💪',c:'#e74c3c',bg:'#f8d7da'};
 
   var html =
-    '<div class="score-card" style="background:linear-gradient(135deg,#1a3a5c,#2d6096)">'+
-      '<div style="font-size:52px">'+gr.i+'</div>'+
-      '<div style="font-size:42px;font-weight:800;margin:6px 0">'+correct+' / '+total+'</div>'+
-      '<div style="font-size:20px;font-weight:700;opacity:.9">'+pct+'%</div>'+
-      '<div class="grade-pill" style="background:'+gr.bg+';color:'+gr.c+'">'+gr.g+'</div>'+
-    '</div>'+
-    '<div class="stats-row">'+
-      '<div class="sbox c"><div class="sv">'+correct+'</div><div class="sl">✅ صحيحة</div></div>'+
-      '<div class="sbox w"><div class="sv">'+wrong+'</div><div class="sl">❌ خاطئة</div></div>'+
-      '<div class="sbox s"><div class="sv">'+skipped+'</div><div class="sl">⏭️ متخطاة</div></div>'+
-    '</div>'+
-    buildAnalytics()+
-    (currentMode==='exam'?buildReview():'')+
-    '<div class="result-btns">'+
-      '<button class="btn-retry" onclick="retryQuiz()">🔄 إعادة الاختبار</button>'+
-      '<button class="btn-home-res" onclick="goToHome()">🏠 الصفحة الرئيسية</button>'+
+    '<div class="score-card">' +
+      '<div class="sc-pct">'+pct+'%</div>' +
+      '<div class="sc-frac">'+correct+' / '+total+'</div>' +
+      '<div class="sc-grade" style="background:'+g.bg+';color:'+g.c+'">'+g.t+'</div>' +
+    '</div>' +
+    '<div class="stats3">' +
+      '<div class="s3box c"><div class="s3v">'+correct+'</div><div class="s3l">✅ صحيحة</div></div>' +
+      '<div class="s3box w"><div class="s3v">'+wrong+'</div><div class="s3l">❌ خاطئة</div></div>' +
+      '<div class="s3box s"><div class="s3v">'+skipped+'</div><div class="s3l">⏭ متروكة</div></div>' +
+    '</div>' +
+    buildAnalytics() +
+    (currentMode==='exam' ? buildReview() : '') +
+    '<div class="res-actions">' +
+      '<button class="btn-retry" onclick="retryQuiz()">🔄 إعادة الاختبار</button>' +
     '</div>';
 
-  document.getElementById('result-content').innerHTML = html;
-  navigateTo('result');
-}
-
-function goToHome() {
-  history = [];
-  showPage('home');
-}
-
-function retryQuiz() {
-  var title = document.getElementById('qb-title').textContent;
-  launchQuiz(shuffle(currentQuiz.slice()), title);
+  document.getElementById('pg-result').innerHTML = html;
+  goTo('result');
 }
 
 function buildAnalytics() {
-  var umap={};
+  var unitMap={};
   currentQuiz.forEach(function(q,i){
-    var uid=q.unit||0;
-    if (!umap[uid]){
-      var nm='—';
-      [1,2].forEach(function(s){CUR[s].units.forEach(function(u){if(u.id===uid)nm=u.name;});});
-      umap[uid]={name:nm,total:0,correct:0};
+    var uid=q.unit||0; if(!uid) return;
+    if(!unitMap[uid]){
+      var uname='';
+      [1,2].forEach(function(s){CUR[s].units.forEach(function(u){if(u.id===uid)uname=u.name;});});
+      unitMap[uid]={name:uname,total:0,correct:0};
     }
-    umap[uid].total++;
-    var qa=userAnswers[i];
-    if(qa!==undefined){
-      var fo=q.options||[],v=0,fc=0;
-      for(var k=0;k<fo.length;k++){if(!fo[k]||!fo[k].trim())continue;if(k===q.answer){fc=v;break;}v++;}
-      if(qa===fc)umap[uid].correct++;
-    }
+    unitMap[uid].total++;
+    if(userAnswers[i]===q.answer) unitMap[uid].correct++;
   });
-  var keys=Object.keys(umap);
+  var keys=Object.keys(unitMap);
   if(keys.length<=1) return '';
-  var bad=[];
-  var rows='';
-  keys.forEach(function(uid){
-    var u=umap[uid]; if(!u.total)return;
-    var p=Math.round(u.correct/u.total*100);
-    var c=p>=80?'#27ae60':p>=60?'#f39c12':'#e74c3c';
-    var lbl=p>=80?'✅ ممتاز':p>=60?'⚠️ جيد':'❌ يحتاج مراجعة';
-    if(p<60)bad.push(u.name);
-    rows+='<div class="ustat">'+
-      '<div class="ustat-name">'+u.name+'</div>'+
-      '<div class="ustat-bar"><div class="ustat-fill" style="width:'+p+'%;background:'+c+'"></div></div>'+
-      '<div class="ustat-info" style="color:'+c+';font-weight:700">'+p+'% <span style="color:var(--mu);font-weight:400">'+lbl+'</span></div>'+
+  var weak=[];
+  var rows=keys.map(function(uid){
+    var u=unitMap[uid]; if(!u.total) return '';
+    var pct=Math.round(u.correct/u.total*100);
+    var c=pct>=80?'#27ae60':pct>=60?'#f39c12':'#e74c3c';
+    if(pct<60) weak.push(u.name);
+    return '<div class="arow">' +
+      '<div class="arow-name">'+u.name+'</div>' +
+      '<div class="arow-bar"><div style="width:'+pct+'%;background:'+c+';height:100%;border-radius:4px;transition:width .5s"></div></div>' +
+      '<div class="arow-pct" style="color:'+c+'">'+pct+'%</div>' +
     '</div>';
-  });
-  var advice=bad.length
-    ?'<div class="advice">💡 <strong>توصية:</strong> راجع: <strong>'+bad.join(' — ')+'</strong></div>'
-    :'<div class="advice ok">🌟 <strong>رائع!</strong> أداؤك ممتاز في جميع الوحدات!</div>';
-  return '<div class="analytics"><div class="sec-title">📊 تحليل الأداء حسب الوحدة</div>'+rows+advice+'</div>';
+  }).join('');
+  var advice = weak.length
+    ? '<div class="advice-box">💡 <strong>تحتاج مراجعة:</strong> '+weak.join(' — ')+'</div>'
+    : '<div class="advice-box ok">🌟 أداء ممتاز في جميع الوحدات!</div>';
+  return '<div class="analytics-box"><div class="sec-title">📊 تحليل الأداء</div>'+rows+advice+'</div>';
 }
 
 function buildReview() {
-  var html='<div class="sec-title" style="margin-top:4px">📋 مراجعة الإجابات</div>';
+  var html='<div class="review-box"><div class="sec-title">📋 مراجعة الإجابات</div>';
   currentQuiz.forEach(function(q,i){
-    var qa=userAnswers[i];
-    var fo=q.options||[];
-    var validOpts=fo.filter(function(o){return o&&o.trim();});
-    var v=0,fc=0;
-    for(var k=0;k<fo.length;k++){if(!fo[k]||!fo[k].trim())continue;if(k===q.answer){fc=v;break;}v++;}
-    var skip=qa===undefined;
-    var ok=!skip&&qa===fc;
-    var sc=skip?'rv-skip':ok?'rv-ok':'rv-err';
-    var st=skip?'⏭️ لم تُجب':ok?'✅ صحيحة':'❌ خاطئة';
-    html+='<div class="rev-card '+sc+'">'+
-      '<div class="rv-hdr"><span class="rv-num">س'+(i+1)+'</span><span class="rv-status">'+st+'</span></div>'+
-      '<div class="rv-q">'+q.text+'</div>'+
-      '<div class="rv-opts">'+
-        validOpts.map(function(o,j){
-          var lc=j===fc?'cor':(j===qa&&!ok&&!skip?'wrg':'nor');
-          var tc=j===fc?'color:var(--green);font-weight:700':(j===qa&&!ok?'color:var(--red)':'');
-          return '<div class="rv-opt"><span class="rlbl '+lc+'">'+LBL[j]+'</span><span style="'+tc+'">'+o+'</span></div>';
-        }).join('')+
-      '</div>'+
-      '<div class="rv-meta">📌 '+(q.lesson||'')+'</div>'+
-    '</div>';
+    var ans=userAnswers[i];
+    var skip=ans===undefined;
+    var ok=!skip&&ans===q.answer;
+    var validOpts=(q.options||[]).filter(function(o){return o&&o.trim();});
+    var sc=skip?'rs':ok?'rok':'rerr';
+    var st=skip?'⏭ لم تُجب':ok?'✅ صحيحة':'❌ خاطئة';
+    html+='<div class="rcard '+sc+'">' +
+      '<div class="rcard-hdr"><span class="rbadge">س'+(i+1)+'</span><span class="rstatus">'+st+'</span></div>' +
+      '<div class="rqtext">'+q.text+'</div>' +
+      '<div class="ropts">';
+    validOpts.forEach(function(o,j){
+      var lc=j===q.answer?'rlbl-ok':j===ans&&!ok&&!skip?'rlbl-err':'rlbl-nor';
+      var tc=j===q.answer?'color:#27ae60;font-weight:700':j===ans&&!ok?'color:#e74c3c':'';
+      html+='<div class="ropt"><span class="rlbl '+lc+'">'+LBL[j]+'</span><span style="'+tc+'">'+o+'</span></div>';
+    });
+    html+='</div><div class="rmeta">📌 '+(q.lesson||'')+'</div></div>';
   });
-  return html;
+  return html+'</div>';
+}
+
+function retryQuiz() {
+  userAnswers={};
+  currentQuiz=shuf(currentQuiz);
+  renderQuiz(document.querySelector('.qhdr-title') ? document.querySelector('.qhdr-title').textContent : 'الاختبار');
+  clearInterval(timerInterval);
+  if (currentMode==='exam') startTimer(currentQuiz.length*60);
+  pageHistory.pop(); // remove 'result' from history
+  showPage('quiz');
 }
 
 // ══════════════════════════════════════════════
 //  TIMER
 // ══════════════════════════════════════════════
-function updTimer(){
-  var el=document.getElementById('qb-timer'); if(!el)return;
+function startTimer(sec) {
+  timeLeft=sec;
+  var el=document.getElementById('qtimer');
+  if(el) el.style.display='inline-block';
+  updTimer();
+  timerInterval=setInterval(function(){
+    timeLeft--;updTimer();
+    if(timeLeft<=0){clearInterval(timerInterval);finishQuiz();}
+  },1000);
+}
+function updTimer() {
+  var el=document.getElementById('qtimer'); if(!el) return;
   var m=Math.floor(timeLeft/60),s=timeLeft%60;
   el.textContent='⏱ '+pad(m)+':'+pad(s);
-  el.className='qb-timer'+(timeLeft<=60?' urgent':'');
+  el.style.color=timeLeft<=60?'#e74c3c':'inherit';
 }
 function pad(n){return n<10?'0'+n:''+n;}
 
 // ══════════════════════════════════════════════
 //  UTILS
 // ══════════════════════════════════════════════
-function shuffle(a){
-  for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}
-  return a;
+function shuf(a){
+  var b=a.slice();
+  for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}
+  return b;
 }
 function esc(s){return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-function showToast(msg,type){
-  var t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast show '+(type||'');
-  setTimeout(function(){t.className='toast';},3000);
-}
